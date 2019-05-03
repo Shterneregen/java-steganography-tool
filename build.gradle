@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+mainClassName = 'random.Main'
+repositories {
+    jcenter()
+}
+dependencies {
+    implementation 'org.knowm.xchart:xchart:3.5.4'
+}
+
+jar {
+    baseName = 'stego'
+    manifest {
+        attributes(
+                'Class-Path': configurations.compileClasspath.files.collect { "$it.name" }.join(' '),
+                'Main-Class': 'random.Main'
+        )
+    }
+    from {
+        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
