@@ -103,7 +103,6 @@ public class MainFrame extends javax.swing.JFrame {
         fileSaver.setControlButtonsAreShown(false);
 
         fileChooser1.setCurrentDirectory(null);
-        fileChooser1.setFileFilter(new BmpFilter());
         fileChooser1.getAccessibleContext().setAccessibleName("");
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -498,7 +497,6 @@ public class MainFrame extends javax.swing.JFrame {
             throw new NullPointerException("Select a file");
         }
         JFileChooser fc = new JFileChooser();
-        fc.setFileFilter(new BmpFilter());
         fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
 
         if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
@@ -560,7 +558,7 @@ public class MainFrame extends javax.swing.JFrame {
         lTrace.setText("");
         String msg = tpInsText.getText();
         try {
-            imgNew = Steganography.ins(pix, msg, numOfPix, nImageWidth, nImageHeight);
+            imgNew = Steganography.insertHiddenMessage(pix, msg, numOfPix, nImageWidth, nImageHeight);
         } catch (NullPointerException | UnsupportedEncodingException ex) {
             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -572,7 +570,7 @@ public class MainFrame extends javax.swing.JFrame {
     private void btExtractActionPerformed(ActionEvent evt) {
         tpInsText.setText("");
         lTrace.setText("");
-        tpInsText.setText(Steganography.ext(pix, numOfPix));
+        tpInsText.setText(Steganography.extractHiddenMessage(pix, numOfPix));
     }
 
     private void AboutBtActionPerformed(ActionEvent evt) {
@@ -657,7 +655,7 @@ public class MainFrame extends javax.swing.JFrame {
             lTrace.setText("Select a file");
             throw new NullPointerException("Select a file");
         }
-        imgNew = Steganography.imgLastBits(pix, nImageWidth, nImageHeight);
+        imgNew = Steganography.doLastBitImage(pix, nImageWidth, nImageHeight);
         forShow = Util.scale(imgNew, 475, 255);
         lbSecondImg.setIcon(new ImageIcon(forShow));
     }

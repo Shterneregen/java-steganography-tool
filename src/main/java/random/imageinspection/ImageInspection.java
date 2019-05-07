@@ -7,13 +7,13 @@ import org.knowm.xchart.XYChart;
 
 public class ImageInspection {
 
-    public static void showMovingAverageChart(int[] pix, int boundAvg1, int boundAvg2, int intrvAvg) {
-        double[] xData = new double[(pix.length / intrvAvg) + 2];
-        double[] yData = new double[(pix.length / intrvAvg) + 2];
+    public static void showMovingAverageChart(int[] pixels, int intervalStart, int intervalEnd, int interval) {
+        double[] xData = new double[(pixels.length / interval) + 2];
+        double[] yData = new double[(pixels.length / interval) + 2];
         double[] xDataNew = new double[xData.length - 2];
         double[] yDataNew = new double[yData.length - 2];
 
-        arrayOfAverageValue(Steganography.extractLastBits(pix), boundAvg1, boundAvg2, intrvAvg, xData, yData);
+        arrayOfAverageValue(Steganography.extractLastBits(pixels), intervalStart, intervalEnd, interval, xData, yData);
 
         for (int i = 0; i < xDataNew.length; i++) {
             xDataNew[i] = xData[i];
@@ -26,43 +26,52 @@ public class ImageInspection {
                 xDataNew[i] = xDataNew[i - 1];
             }
         }
-        // Create Chart
         XYChart chart = QuickChart.getChart("The average amount of pixels per interval", "Pixel number",
                 "Average value", "y(x)", xDataNew, yDataNew);
-        // Show it
-        SwingWrapper swingWrapper = new SwingWrapper(chart);//.displayChart();  
-        swingWrapper.displayChart("The average amount of pixels per interval");
-        //new SwingWrapper(chart).displayChart();
+        new SwingWrapper(chart).displayChart("The average amount of pixels per interval");
     }
 
-    // Входные параметры: массив пикселей, начальная и конечная точка итенвала проверки, 
-    // интервал, через который сторятся точки и 2 массива чисел с плавающей точкой. В которые записываются:
-    // по dX - Pixel number, по dY - среднеяя сумма пикселей (сумма пикселей на их количество)
-    private static void arrayOfAverageValue(int[] pixels, int bound1, int bound2, int interval, double[] dX, double[] dY) {
+    /**
+     * @param pixels        array of pixels
+     * @param intervalStart start point of the check interval
+     * @param intervalEnd   end point of the check interval
+     * @param interval      interval
+     * @param dXOut         pixel number
+     * @param dYOut         average sum of pixels (sum of pixels / number)
+     */
+    private static void arrayOfAverageValue(int[] pixels,
+                                            int intervalStart,
+                                            int intervalEnd,
+                                            int interval,
+                                            double[] dXOut,
+                                            double[] dYOut) {
         int tempX = 0;
         int sum = 0;
-        for (int i = bound1, ii = 0, j = 0; i < bound2; i++, ii++) {
+        for (int i = intervalStart, ii = 0, j = 0; i < intervalEnd; i++, ii++) {
             sum += pixels[i];
             // Если остаток от деления ii на interval == 0 
             // или i - № последнего пикселя
-            if (((ii % interval == 0) | (i == (bound2 - 1))) & ii > 0) {
-                dY[j] = sum / interval;
+            if (((ii % interval == 0) | (i == (intervalEnd - 1))) & ii > 0) {
+                dYOut[j] = sum / interval;
                 tempX += interval;
-                dX[j] = tempX;
+                dXOut[j] = tempX;
                 sum = 0;
                 j++;
             }
         }
     }
 
-    public static void showEntropyCalculationChart(int[] pix, int boundEntropy1, int boundEntropy2, int intrvEntropy) {
+    public static void showEntropyCalculationChart(int[] pixels,
+                                                   int intervalStart,
+                                                   int intervalEnd,
+                                                   int interval) {
 
-        double[] xData = new double[(pix.length / intrvEntropy) + 2];
-        double[] yData = new double[(pix.length / intrvEntropy) + 2];
+        double[] xData = new double[(pixels.length / interval) + 2];
+        double[] yData = new double[(pixels.length / interval) + 2];
         double[] xDataNew = new double[xData.length - 2];
         double[] yDataNew = new double[yData.length - 2];
 
-        entropy(pix, boundEntropy1, boundEntropy2, intrvEntropy, xData, yData);
+        entropy(pixels, intervalStart, intervalEnd, interval, xData, yData);
 
         for (int i = 0; i < xDataNew.length; i++) {
             xDataNew[i] = xData[i]; ///xDataNew.length
@@ -75,23 +84,26 @@ public class ImageInspection {
                 xDataNew[i] = xDataNew[i - 1];
             }
         }
-        // Create Chart
         XYChart chart = QuickChart
                 .getChart("Pixel entropy", "Pixel number", "Entropy", "y(x)",
                         xDataNew, yDataNew);
-        // Show it
         new SwingWrapper(chart).displayChart("Pixel entropy");
     }
 
     /**
-     * @param pixels   массив пикселей
-     * @param bound1   начальная точка итенвала проверки
-     * @param bound2   конечная точка итенвала проверки
-     * @param interval интервал, через который сторятся точки
-     * @param dX       Pixel number
-     * @param dY       энтропия пикселей за интервал
+     * @param pixels        array of pixels
+     * @param intervalStart start point of the check interval
+     * @param intervalEnd   end point of the check interval
+     * @param interval      interval
+     * @param dXOut         pixel number
+     * @param dYOut         pixel entropy per interval
      */
-    private static void entropy(int[] pixels, int bound1, int bound2, int interval, double[] dX, double[] dY) {
+    private static void entropy(int[] pixels,
+                                int intervalStart,
+                                int intervalEnd,
+                                int interval,
+                                double[] dXOut,
+                                double[] dYOut) {
 
         double sumPix1 = 0;
         double sumPix0 = 0;
@@ -100,12 +112,11 @@ public class ImageInspection {
         double tempX = 0;
         double p1, p0, h;
 
-        int[] pixs = pixels;
-        int[] extMsg = new int[pixs.length];
-        for (int i = 0; i < pixs.length; i++) {
-            extMsg[i] = Steganography.extFromPix(pixs[i]);
+        int[] extMsg = new int[pixels.length];
+        for (int i = 0; i < pixels.length; i++) {
+            extMsg[i] = Steganography.extractIntMsgFromPixel(pixels[i]);
         }
-        for (int i = bound1, ii = 0, k = 0; i < bound2; i++) {
+        for (int i = intervalStart, ii = 0, k = 0; i < intervalEnd; i++) {
             for (int j = 0; j < 8; j++) {
                 int oneBit = (extMsg[i] >>> j) & 0x1;
                 if (oneBit == 0x1) {
@@ -118,15 +129,15 @@ public class ImageInspection {
             sumPix1 += sumBit1;
             sumPix0 += sumBit0;
 
-            if ((ii % interval == 0) | (i == bound2 - 2)) {
+            if ((ii % interval == 0) | (i == intervalEnd - 2)) {
                 tempX += interval;
-                dX[k] = tempX;
+                dXOut[k] = tempX;
                 p1 = sumPix1 / (sumPix1 + sumPix0);
                 p0 = (sumPix0 / (sumPix1 + sumPix0));
 
                 // log a (b) = log c (b) / log c (a)
                 h = -((p0 * (Math.log(p0) / Math.log(2))) + (p1 * (Math.log(p1) / Math.log(2))));
-                dY[k] = h;
+                dYOut[k] = h;
                 sumPix1 = 0;
                 sumBit1 = 0;
                 sumPix0 = 0;
