@@ -1,118 +1,136 @@
 package random.stego;
 
-import random.gui.MainFrame;
+import random.ValidateException;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
-import java.io.UnsupportedEncodingException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.nio.charset.StandardCharsets;
 
 public class Steganography {
 
-    // Принимает массив битов изображения, оставляет в массиве только те биты, в которые происходит запись
-    // На их основе возвращает изображение.
+    private Steganography() {
+    }
+
+    /**
+     * Generates an image based on the last bits
+     *
+     * @param pixels      image pixel array
+     * @param imageWidth  image width
+     * @param imageHeight image height
+     * @return image based on the last bits
+     */
     public static BufferedImage doLastBitImage(int[] pixels, int imageWidth, int imageHeight) {
         BufferedImage image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
-        image.setRGB(0, 0, imageWidth, imageHeight, extractLastBits(pixels), 0, imageWidth);
+        image.setRGB(0, 0, imageWidth, imageHeight, formLastBitsPixelArray(pixels), 0, imageWidth);
         return image;
     }
 
-    // Принимает массив пикселей pixels, возвращает этот же массив только с теми битами,
-    // куда происходила запись сообщения, остальные обнуляет
-    public static int[] extractLastBits(int[] pixels) throws NullPointerException {
+    /**
+     * Generates an array of pixels based on the last significant bits only.
+     * The remaining pixels are set to zero.
+     *
+     * @param pixels image pixel array
+     * @return image pixel array only with last significant bits
+     */
+    public static int[] formLastBitsPixelArray(int[] pixels) {
         for (int i = 0; i < pixels.length; i++) {
-            int nR = (pixels[i] >> 16) & 0x3;
-            int nG = (pixels[i] >> 8) & 0x7;
-            int nB = pixels[i] & 0x7;
-            pixels[i] = nR << 16 | nG << 8 | nB;
+            pixels[i] = pixels[i] & 0x030707;
         }
         return pixels;
     }
 
-    // Возвращает массив пикселей из изображения 
-    public static int[] imgToPix(BufferedImage originalImage, int imageWidth, int imageHeight) throws InterruptedException {
+    /**
+     * Get pixel array from image
+     *
+     * @param image image
+     * @return pixel array
+     */
+    public static int[] getPixelsFromImage(BufferedImage image) throws InterruptedException {
+        int imageWidth = image.getWidth();
+        int imageHeight = image.getHeight();
         int[] pixels = new int[imageWidth * imageHeight];
         PixelGrabber pgr = new PixelGrabber(
-                originalImage,
-                0, //  (x) координаты вырезаемой прямоугольной 
-                0, //  (y) области, на основе которой строится массив пикселов
+                image,
+                0, //  (x) coordinates of the cut rectangular area
+                0, //  (y) on the basis of which an array of pixels is built
                 imageWidth, // Width
                 imageHeight, // Height
                 pixels,
-                0, //  смещение в массиве, начиная с которого. туда будут записаны данные первого пиксела
-                imageWidth); //  расстояние между строками пикселов в массиве
+                0, // the offset in the array, starting from which the first pixel data will be written
+                imageWidth); // distance between pixels rows in an array
         pgr.grabPixels();
         return pixels;
     }
 
-    // Вставляет строку message в массив пикселей pixels в определённую позицию posPix. 
-    // Возвращает изображение со скрытым сообщением
+    /**
+     * Insert message to image pixel array
+     *
+     * @param pixels      image pixel array
+     * @param message     message
+     * @param posPix      start pixel to write
+     * @param imageWidth  image width
+     * @param imageHeight image height
+     * @return image with hidden message
+     */
     public static BufferedImage insertHiddenMessage(int[] pixels,
                                                     String message,
                                                     int posPix,
                                                     int imageWidth,
                                                     int imageHeight
-    ) throws NullPointerException, UnsupportedEncodingException {
+    ) throws ValidateException {
         if (message.equals("")) {
-            throw new NullPointerException("Insert message");
+            throw new ValidateException("Insert message");
         }
         if (pixels == null) {
-            throw new NullPointerException("Select a file");
+            throw new ValidateException("Select a file");
         }
         if (posPix > pixels.length) {
-            throw new NullPointerException("№ пикселя");
+            throw new ValidateException("Wrong pixel number");
         }
-        // Преобразование строки в целочисленный массив для вставки в массив пикселей
-        int[] intMsg = msgToInt(message);
-        // Преобразование проверочного символа в целочисленный массив 
-        int[] intCheck1 = msgToInt("~");
-        int[] intCheck2 = msgToInt("^");
+        // Converts message to integer array
+        byte[] intMsg = stringToByteArray(message);
+        // Converts check characters to integer array
+        byte[] intCheck1 = stringToByteArray("~");
+        byte[] intCheck2 = stringToByteArray("^");
         int tempPosPix = posPix;
 
         if (intMsg.length > (pixels.length - tempPosPix - 8)) {
-            throw new NullPointerException("Not enough space to write");
+            throw new ValidateException("Not enough space to write");
         }
         // Check characters
-        pixels[tempPosPix] = insToPix(intCheck1[0], pixels[tempPosPix]);
+        pixels[tempPosPix] = insertMessageByteToPixel(intCheck1[0], pixels[tempPosPix]);
         tempPosPix++;
-        pixels[tempPosPix] = insToPix(intCheck1[0], pixels[tempPosPix]);
+        pixels[tempPosPix] = insertMessageByteToPixel(intCheck1[0], pixels[tempPosPix]);
         tempPosPix++;
         for (int j = 0; j < intMsg.length + 1; tempPosPix++, j++) {
-            // Если достигнут конец сообщения, то записываются символы, по которым 
-            // можно определить конец сообщения
+            // If the end of the message is reached, then check characters are written
+            // they allow to determine the message end
             if (j == intMsg.length) {
-                pixels[tempPosPix] = insToPix(intCheck1[0], pixels[tempPosPix]);
+                pixels[tempPosPix] = insertMessageByteToPixel(intCheck1[0], pixels[tempPosPix]);
                 tempPosPix += 7;
-                pixels[tempPosPix] = insToPix(intCheck2[0], pixels[tempPosPix]);
+                pixels[tempPosPix] = insertMessageByteToPixel(intCheck2[0], pixels[tempPosPix]);
                 break;
             }
-            // В пиксель записывается элемент сообщения
-            pixels[tempPosPix] = insToPix(intMsg[j], pixels[tempPosPix]);
+            // message element is written to pixel
+            pixels[tempPosPix] = insertMessageByteToPixel(intMsg[j], pixels[tempPosPix]);
         }
         BufferedImage retImg = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
         retImg.setRGB(0, 0, imageWidth, imageHeight, pixels, 0, imageWidth);
         return retImg;
     }
 
-    // intMsg элемент массива сообщения записывается в pixel биты элемента массива пикселей изображения
-    // Возвращает пиксель со скрытым сообщением
-    private static int insToPix(int intMsg, int pixel) {
-        int msg1, msg2, msg3, nR, nG, nB, msgR, msgG, msgB;
-        msg1 = (intMsg >> 6) & 0x3; // 0x3 = 0000 0011
-        msg2 = (intMsg >> 3) & 0x7; // 0x7 = 0000 0111
-        msg3 = intMsg & 0x7;
-
-        nR = (pixel >> 16) & 0xfc;  // 0xfc = 1111 1100
-        msgR = nR | msg1;
-
-        nG = (pixel >> 8) & 0xf8;   // 0xf8 = 1111 1000
-        msgG = nG | msg2;
-
-        nB = pixel & 0xf8;          // 0xf8 = 1111 1000
-        msgB = nB | msg3;
-
-        return (msgR << 16 | msgG << 8 | msgB);
+    /**
+     * Insert message byte to pixel
+     *
+     * @param msgByte message item (one byte)
+     * @param pixel   image pixel (three bytes)
+     * @return pixel with message byte
+     */
+    private static int insertMessageByteToPixel(byte msgByte, int pixel) {
+        int pixelMask = pixel & 0xfcf8f8; // 0xfcf8f8 11111100 11111000 11111000
+        //            0xc0 = 11000000           0x38 = 00111000          0x7 = 00000111
+        int msgMask = ((msgByte & 0xc0) << 10) | ((msgByte & 0x38) << 5) | msgByte & 0x7;
+        return pixelMask | msgMask;
     }
 
     /**
@@ -121,25 +139,19 @@ public class Steganography {
      * @param pixels           image pixels
      * @param msgPixelPosition start pixel number of message
      * @return message from image
-     * @throws NullPointerException
      */
-    public static String extractHiddenMessage(int[] pixels, int msgPixelPosition) throws NullPointerException {
+    public static String extractHiddenMessage(int[] pixels, int msgPixelPosition) throws ValidateException {
         if (pixels == null) {
-            throw new NullPointerException("Select a file");
+            throw new ValidateException("Select a file");
         }
-        int[] extMsg = new int[pixels.length];
+        byte[] extMsg = new byte[pixels.length];
         int tempPosPix = msgPixelPosition + 2;
-        String s = null;
         String resultStr = null;
         int index;
         for (; tempPosPix < pixels.length; tempPosPix++) {
-            extMsg[tempPosPix] = extractIntMsgFromPixel(pixels[tempPosPix]);
+            extMsg[tempPosPix] = extractMsgByteFromPixel(pixels[tempPosPix]);
         }
-        try {
-            s = new String(intToMsg(extMsg), "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        String s = byteArrayToString(extMsg);
         index = s.indexOf('~');
         if (s.charAt(index + 7) == '^') {
             resultStr = s.substring(msgPixelPosition + 2, index);
@@ -150,36 +162,19 @@ public class Steganography {
     /**
      * Extracts message bits from image bits
      *
-     * @param rgbPixel pixel with message
+     * @param pixel pixel with message
      * @return message byte
      */
-    public static int extractIntMsgFromPixel(int rgbPixel) {
-        int nR = (rgbPixel >> 16) & 0x3;
-        int msgR = (nR << 6);
-
-        int nG = (rgbPixel >> 8) & 0x7;
-        int msgG = (nG << 3);
-
-        int msgB = rgbPixel & 0x7;
-        return msgR | msgG | msgB;
+    public static byte extractMsgByteFromPixel(int pixel) {
+        //               0xc0 = 11000000         0x38 = 00111000      0x7 = 00000111
+        return (byte) (((pixel >> 10) & 0xc0) | ((pixel >> 5) & 0x38) | (pixel & 0x7));
     }
 
-    // Преобразует строку в целочисленный массив
-    private static int[] msgToInt(String message) throws UnsupportedEncodingException {
-        byte[] msgByteArray = message.getBytes("UTF-8");
-        int[] imsg = new int[msgByteArray.length];
-        for (int i = 0; i < msgByteArray.length; i++) {
-            imsg[i] = (0xfff & msgByteArray[i]);
-        }
-        return imsg;
+    private static byte[] stringToByteArray(String message) {
+        return message.getBytes(StandardCharsets.UTF_8);
     }
 
-    // Преобразует целочисленный массив в байтовый
-    private static byte[] intToMsg(int[] imsg) {
-        byte[] intToByte = new byte[imsg.length];
-        for (int i = 0; i < imsg.length; i++) {
-            intToByte[i] = (byte) imsg[i];
-        }
-        return intToByte;
+    private static String byteArrayToString(byte[] byteArrayMsg) {
+        return new String(byteArrayMsg, StandardCharsets.UTF_8);
     }
 }

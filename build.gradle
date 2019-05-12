@@ -1,7 +1,13 @@
 plugins {
     id 'java'
     id 'application'
+    id 'org.openjfx.javafxplugin' version '0.0.7'
 }
+javafx {
+    version = "11.0.1"
+    modules = ['javafx.controls', 'javafx.fxml', 'javafx.swing']
+}
+
 mainClassName = 'random.Main'
 repositories {
     jcenter()
@@ -11,7 +17,7 @@ dependencies {
 }
 
 jar {
-    baseName = 'stego'
+    archiveFileName = 'stego.jar'
     manifest {
         attributes(
                 'Class-Path': configurations.compileClasspath.files.collect { "$it.name" }.join(' '),

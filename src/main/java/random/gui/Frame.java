@@ -1,5 +1,6 @@
 package random.gui;
 
+import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -11,15 +12,15 @@ import javafx.scene.layout.AnchorPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import random.Util;
-import random.imageinspection.ImageInspection;
+import random.ValidateException;
+import random.inspector.EntropyInspector;
+import random.inspector.MovingAverageInspector;
 import random.stego.Steganography;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Frame {
@@ -41,27 +42,16 @@ public class Frame {
     private BufferedImage originalImage;
     private BufferedImage newImage;
 
-    private FileChooser.ExtensionFilter extFilterBmp
-            = new FileChooser.ExtensionFilter("BMP files (*.bmp)", "*.bmp");
-
     private int[] imagePixels;
     private int imageWidth;
     private int imageHeight;
 
     @FXML
     public void initialize() {
-        makeOnlyDigitsField(startWritePixel);
-        makeOnlyDigitsField(intervalStart);
-        makeOnlyDigitsField(intervalEnd);
-        makeOnlyDigitsField(interval);
-    }
-
-    private void makeOnlyDigitsField(TextField textField) {
-        textField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                textField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-        });
+        Util.makeOnlyDigitsField(startWritePixel);
+        Util.makeOnlyDigitsField(intervalStart);
+        Util.makeOnlyDigitsField(intervalEnd);
+        Util.makeOnlyDigitsField(interval);
     }
 
     @FXML
@@ -70,15 +60,18 @@ public class Frame {
     }
 
     private void openChooseImageDialog() throws IOException, InterruptedException {
-        FileChooser fileChooser = initFileChooser();
+        FileChooser fileChooser = Util.getOpenFileChooser("Open image");
         File file = fileChooser.showOpenDialog(new Stage());
+        if (file == null) {
+            return;
+        }
         originalImage = ImageIO.read(file);
         setOriginalImageForShow();
 
-        imageWidth = originalImage.getWidth(null);
-        imageHeight = originalImage.getHeight(null);
+        imageWidth = originalImage.getWidth();
+        imageHeight = originalImage.getHeight();
         imagePixels = new int[imageWidth * imageHeight];
-        imagePixels = Steganography.imgToPix(originalImage, imageWidth, imageHeight);
+        imagePixels = Steganography.getPixelsFromImage(originalImage);
 
         originalImagePane.widthProperty().addListener(
                 (observableValue, oldSceneWidth, newSceneWidth) -> setOriginalImageForShow());
@@ -90,7 +83,12 @@ public class Frame {
 
     @FXML
     private void extractHiddenMessage() {
-        message.setText(Steganography.extractHiddenMessage(imagePixels, getStartPixel()));
+        try {
+            message.setText(Steganography.extractHiddenMessage(imagePixels, getStartPixel()));
+        } catch (ValidateException e) {
+            LOG.info(e.getMessage());
+            statusBar.setText(e.getMessage());
+        }
     }
 
     private int getStartPixel() {
@@ -152,9 +150,9 @@ public class Frame {
                     (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
             newImagePane.heightProperty().addListener(
                     (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
-        } catch (NullPointerException | UnsupportedEncodingException ex) {
-            LOG.log(Level.SEVERE, ex.getMessage(), ex);
-            statusBar.setText("Cannot insert message to image");
+        } catch (ValidateException e) {
+            LOG.info(e.getMessage());
+            statusBar.setText(e.getMessage());
         }
     }
 
@@ -164,56 +162,62 @@ public class Frame {
             statusBar.setText(NO_IMAGE_WARNING);
             return;
         }
-        FileChooser fileChooser = initFileChooser();
+        FileChooser fileChooser = Util.getSaveFileChooser("Save image");
         File file = fileChooser.showSaveDialog(new Stage());
         if (file != null) {
             ImageIO.write(newImage, "bmp", file);
-            statusBar.setText("Image saved");
+            statusBar.setText("Image was saved");
         }
     }
 
-    private FileChooser initFileChooser() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.getExtensionFilters().add(extFilterBmp);
-        fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
-        fileChooser.setTitle("Open Resource File");
-        return fileChooser;
+    @FXML
+    private void convertToBmp() throws IOException {
+        if (originalImage == null) {
+            statusBar.setText(NO_IMAGE_WARNING);
+            return;
+        }
+        FileChooser fileChooser = Util.getSaveFileChooser("Save image");
+        File file = fileChooser.showSaveDialog(new Stage());
+        if (file != null) {
+            ImageIO.write(originalImage, "bmp", file);
+            statusBar.setText("Image was converted");
+        }
     }
 
     @FXML
     private void doAvgChart() {
-        if (!validChartParams()) {
+        if (notValidChartParams()) {
             return;
         }
-        ImageInspection.showMovingAverageChart(imagePixels, getIntervalStart(), getIntervalEnd(), getInterval());
+        MovingAverageInspector.showMovingAverageChart(imagePixels, getIntervalStart(), getIntervalEnd(), getInterval());
     }
 
     @FXML
     private void doEntropyChart() {
-        if (!validChartParams()) {
+        if (notValidChartParams()) {
             return;
         }
-        ImageInspection.showEntropyCalculationChart(imagePixels, getIntervalStart(), getIntervalEnd(), getInterval());
+        EntropyInspector.showEntropyCalculationChart(imagePixels, getIntervalStart(), getIntervalEnd(), getInterval());
     }
 
-    private boolean validChartParams() {
+    private boolean notValidChartParams() {
         if (imagePixels == null) {
             statusBar.setText(NO_IMAGE_WARNING);
-            return false;
+            return true;
         }
         if (getIntervalStart() > getIntervalEnd()) {
             statusBar.setText("Wrong interval");
-            return false;
+            return true;
         }
         if (getIntervalEnd() > imagePixels.length) {
-            statusBar.setText("Invalid interval. In the image " + imagePixels.length + " pixels");
-            return false;
+            statusBar.setText(String.format("Invalid interval. In the image %s pixels", imagePixels.length));
+            return true;
         }
         if ((getIntervalEnd() - getIntervalStart()) / getInterval() < 10) {
             statusBar.setText("Check interval too large");
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     @FXML
@@ -228,5 +232,11 @@ public class Frame {
                 (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
         newImagePane.heightProperty().addListener(
                 (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
+    }
+
+    @FXML
+    private void exit() {
+        Platform.exit();
+        System.exit(0);
     }
 }
