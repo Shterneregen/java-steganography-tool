@@ -23,7 +23,7 @@ public class EntropyInspector {
         XYChart chart = QuickChart
                 .getChart("Pixel entropy", "Pixel number", "Entropy", "y(x)",
                         coordinates.getX(), coordinates.getY());
-        JFrame chartFrame = new SwingWrapper<>(chart).displayChart("Pixel entropy");
+        JFrame chartFrame = new SwingWrapper<>(chart).setTitle("Pixel entropy").displayChart();
         SwingUtilities.invokeLater(() -> chartFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE));
     }
 

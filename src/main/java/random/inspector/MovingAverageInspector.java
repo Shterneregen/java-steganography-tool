@@ -14,12 +14,14 @@ public class MovingAverageInspector {
 
     public static void showMovingAverageChart(int[] pixels, int intervalStart, int intervalEnd, int interval) {
 
-        Coordinates coordinates = arrayOfAverageValue(Steganography.formLastBitsPixelArray(pixels), intervalStart, intervalEnd, interval);
+        Coordinates coordinates = arrayOfAverageValue(Steganography.formLastBitsPixelArray(pixels),
+                intervalStart, intervalEnd, interval);
         coordinates = Coordinates.validateCoordinates(coordinates);
 
         XYChart chart = QuickChart.getChart("The average amount of pixels per interval", "Pixel number",
                 "Average value", "y(x)", coordinates.getX(), coordinates.getY());
-        JFrame chartFrame = new SwingWrapper<>(chart).displayChart("The average amount of pixels per interval");
+        JFrame chartFrame = new SwingWrapper<>(chart).setTitle("The average amount of pixels per interval")
+                .displayChart();
         SwingUtilities.invokeLater(() -> chartFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE));
     }
 

@@ -1,27 +1,27 @@
 plugins {
-    id 'java'
-    id 'application'
-    id 'org.openjfx.javafxplugin' version '0.0.7'
+    id "java"
+    id "application"
+    id "org.openjfx.javafxplugin" version "0.0.9"
 }
 javafx {
     version = "11.0.1"
-    modules = ['javafx.controls', 'javafx.fxml', 'javafx.swing']
+    modules = ["javafx.controls", "javafx.fxml", "javafx.swing"]
 }
 
-mainClassName = 'random.Main'
+mainClassName = "random.Main"
 repositories {
     jcenter()
 }
 dependencies {
-    implementation 'org.knowm.xchart:xchart:3.5.4'
+    implementation "org.knowm.xchart:xchart:3.8.0"
 }
 
 jar {
-    archiveFileName = 'stego.jar'
+    archiveFileName = "stego.jar"
     manifest {
         attributes(
-                'Class-Path': configurations.compileClasspath.files.collect { "$it.name" }.join(' '),
-                'Main-Class': 'random.Main'
+                "Class-Path": configurations.compileClasspath.files.collect { "$it.name" }.join(" "),
+                "Main-Class": "random.Main"
         )
     }
     from {
