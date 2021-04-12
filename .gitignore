@@ -1,5 +1,5 @@
 # Ignore Gradle build output directory
-build
+/build/
 
 # Gradle
 .gradle
@@ -12,3 +12,6 @@ out/
 *.iws
 *.ipr
 .idea
+
+# Ignore Gradle build output directory
+build
