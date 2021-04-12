@@ -2,6 +2,7 @@ plugins {
     id "java"
     id "application"
     id "org.openjfx.javafxplugin" version "0.0.9"
+    id "org.beryx.jlink" version "2.23.6"
 }
 javafx {
     version = "11.0.1"
@@ -16,15 +17,16 @@ dependencies {
     implementation "org.knowm.xchart:xchart:3.8.0"
 }
 
-jar {
-    archiveFileName = "stego.jar"
-    manifest {
-        attributes(
-                "Class-Path": configurations.compileClasspath.files.collect { "$it.name" }.join(" "),
-                "Main-Class": "random.Main"
-        )
-    }
-    from {
-        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-}
+// To create fat jar - uncomment this block
+//jar {
+//    archiveFileName = "stego.jar"
+//    manifest {
+//        attributes(
+//                "Class-Path": configurations.compileClasspath.files.collect { "$it.name" }.join(" "),
+//                "Main-Class": "random.Main"
+//        )
+//    }
+//    from {
+//        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+//    }
+//}
