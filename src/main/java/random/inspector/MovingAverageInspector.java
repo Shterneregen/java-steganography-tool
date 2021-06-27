@@ -3,7 +3,6 @@ package random.inspector;
 import org.knowm.xchart.QuickChart;
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
-import random.stego.Steganography;
 
 import javax.swing.*;
 
@@ -14,7 +13,7 @@ public class MovingAverageInspector {
 
     public static void showMovingAverageChart(int[] pixels, int intervalStart, int intervalEnd, int interval) {
 
-        Coordinates coordinates = arrayOfAverageValue(Steganography.formLastBitsPixelArray(pixels),
+        Coordinates coordinates = arrayOfAverageValue(LastBitService.formLastBitsPixelArray(pixels),
                 intervalStart, intervalEnd, interval);
         coordinates = Coordinates.validateCoordinates(coordinates);
 
@@ -45,7 +44,7 @@ public class MovingAverageInspector {
             sum += pixels[i];
             // if remainder of the division ii / interval == 0  or i is last pixel number
             if (((ii % interval == 0) || (i == (intervalEnd - 1))) && ii > 0) {
-                yData[j] = sum / interval;
+                yData[j] = (double) sum / interval;
                 tempX += interval;
                 xData[j] = tempX;
                 sum = 0;

@@ -11,17 +11,23 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import random.Util;
 import random.ValidateException;
 import random.inspector.EntropyInspector;
+import random.inspector.LastBitService;
 import random.inspector.MovingAverageInspector;
-import random.stego.Steganography;
+import random.stego.StegoService;
+import random.utils.FileChooserUtils;
+import random.utils.ImageService;
+import random.utils.Utils;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static random.utils.Utils.parseInt;
 
 public class Frame {
 
@@ -43,144 +49,100 @@ public class Frame {
     private BufferedImage newImage;
 
     private int[] imagePixels;
-    private int imageWidth;
-    private int imageHeight;
 
     @FXML
     public void initialize() {
-        Util.makeOnlyDigitsField(startWritePixel);
-        Util.makeOnlyDigitsField(intervalStart);
-        Util.makeOnlyDigitsField(intervalEnd);
-        Util.makeOnlyDigitsField(interval);
+        Utils.makeOnlyDigitsField(startWritePixel);
+        Utils.makeOnlyDigitsField(intervalStart);
+        Utils.makeOnlyDigitsField(intervalEnd);
+        Utils.makeOnlyDigitsField(interval);
     }
 
     @FXML
-    private void openImageAction() throws IOException, InterruptedException {
-        openChooseImageDialog();
-    }
-
-    private void openChooseImageDialog() throws IOException, InterruptedException {
-        FileChooser fileChooser = Util.getOpenFileChooser("Open image");
+    private void openImageAction() {
+        FileChooser fileChooser = FileChooserUtils.getOpenFileChooser("Open image");
         File file = fileChooser.showOpenDialog(new Stage());
         if (file == null) {
+            setStatus("No file selected");
             return;
         }
-        originalImage = ImageIO.read(file);
-        setOriginalImageForShow();
+        try {
+            originalImage = ImageIO.read(file);
+            imagePixels = ImageService.getPixelsFromImage(originalImage);
 
-        imageWidth = originalImage.getWidth();
-        imageHeight = originalImage.getHeight();
-        imagePixels = new int[imageWidth * imageHeight];
-        imagePixels = Steganography.getPixelsFromImage(originalImage);
+            setupImage(originalImage, originalImageForShow, originalImagePane);
+            setStatus("In the image " + imagePixels.length + " pixels");
+        } catch (IOException | InterruptedException e) {
+            LOG.log(Level.SEVERE, e.getMessage());
+            setStatus("Sorry, cannot open the file");
+        }
 
-        originalImagePane.widthProperty().addListener(
-                (observableValue, oldSceneWidth, newSceneWidth) -> setOriginalImageForShow());
-        originalImagePane.heightProperty().addListener(
-                (observableValue, oldSceneWidth, newSceneWidth) -> setOriginalImageForShow());
-
-        statusBar.setText("In the image " + imagePixels.length + " pixels");
+        message.setText("");
+        newImageForShow.setImage(null);
     }
 
     @FXML
     private void extractHiddenMessage() {
         try {
-            message.setText(Steganography.extractHiddenMessage(imagePixels, getStartPixel()));
+            message.setText(StegoService.extractHiddenMessage(imagePixels, getStartPixel()));
         } catch (ValidateException e) {
             LOG.info(e.getMessage());
-            statusBar.setText(e.getMessage());
+            setStatus(e.getMessage());
         }
-    }
-
-    private int getStartPixel() {
-        try {
-            return Integer.parseInt(startWritePixel.getText());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private int getIntervalStart() {
-        try {
-            return Integer.parseInt(intervalStart.getText());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private int getIntervalEnd() {
-        try {
-            return Integer.parseInt(intervalEnd.getText());
-        } catch (NumberFormatException e) {
-            return imagePixels.length;
-        }
-    }
-
-    private int getInterval() {
-        try {
-            return Integer.parseInt(interval.getText());
-        } catch (NumberFormatException e) {
-            return imagePixels.length / 100;
-        }
-    }
-
-    private void setOriginalImageForShow() {
-        setImageForShow(originalImage, originalImagePane, originalImageForShow);
-    }
-
-    private void setNewImageForShow() {
-        setImageForShow(newImage, newImagePane, newImageForShow);
-    }
-
-    private void setImageForShow(BufferedImage imageFromFile, AnchorPane imagePane, ImageView newImageForShow) {
-        BufferedImage scaledImage
-                = Util.scale(imageFromFile, (int) imagePane.getWidth(), (int) imagePane.getHeight());
-        Image image = SwingFXUtils.toFXImage(scaledImage, null);
-        newImageForShow.setImage(image);
     }
 
     @FXML
     private void insertHiddenMessage() {
-        statusBar.setText("");
+        setStatus("");
         String msg = message.getText();
+        if (originalImage == null) {
+            setStatus("Select the image");
+            return;
+        }
         try {
-            newImage = Steganography.insertHiddenMessage(imagePixels, msg, getStartPixel(), imageWidth, imageHeight);
-            setNewImageForShow();
-
-            newImagePane.widthProperty().addListener(
-                    (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
-            newImagePane.heightProperty().addListener(
-                    (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
+            newImage = StegoService.insertHiddenMessage(imagePixels, msg, getStartPixel(),
+                    originalImage.getWidth(), originalImage.getHeight());
+            setupImage(newImage, newImageForShow, newImagePane);
         } catch (ValidateException e) {
             LOG.info(e.getMessage());
-            statusBar.setText(e.getMessage());
+            setStatus(e.getMessage());
         }
     }
 
     @FXML
-    private void openSaveImageDialog() throws IOException {
+    private void openSaveImageDialog() {
         if (newImage == null) {
-            statusBar.setText(NO_IMAGE_WARNING);
+            setStatus(NO_IMAGE_WARNING);
             return;
         }
-        FileChooser fileChooser = Util.getSaveFileChooser("Save image");
+        FileChooser fileChooser = FileChooserUtils.getSaveFileChooser("Save image");
         File file = fileChooser.showSaveDialog(new Stage());
         if (file != null) {
-            ImageIO.write(newImage, "bmp", file);
-            statusBar.setText("Image was saved");
+            try {
+                ImageIO.write(newImage, "bmp", file);
+                setStatus("Image was saved");
+            } catch (IOException e) {
+                LOG.log(Level.SEVERE, e.getMessage());
+                setStatus("Sorry, cannot save the file");
+            }
         }
     }
 
     @FXML
-    private void convertToBmp() throws IOException {
+    private void convertToBmp() {
         if (originalImage == null) {
-            statusBar.setText(NO_IMAGE_WARNING);
+            setStatus(NO_IMAGE_WARNING);
             return;
         }
-        FileChooser fileChooser = Util.getSaveFileChooser("Save image");
+        FileChooser fileChooser = FileChooserUtils.getSaveFileChooser("Save image");
         File file = fileChooser.showSaveDialog(new Stage());
         if (file != null) {
-            ImageIO.write(originalImage, "bmp", file);
-            statusBar.setText("Image was converted");
+            try {
+                ImageIO.write(originalImage, "bmp", file);
+                setStatus("Image was converted");
+            } catch (IOException e) {
+                setStatus("Cannot convert the image to BMP");
+            }
         }
     }
 
@@ -200,43 +162,73 @@ public class Frame {
         EntropyInspector.showEntropyCalculationChart(imagePixels, getIntervalStart(), getIntervalEnd(), getInterval());
     }
 
-    private boolean notValidChartParams() {
-        if (imagePixels == null) {
-            statusBar.setText(NO_IMAGE_WARNING);
-            return true;
-        }
-        if (getIntervalStart() > getIntervalEnd()) {
-            statusBar.setText("Wrong interval");
-            return true;
-        }
-        if (getIntervalEnd() > imagePixels.length) {
-            statusBar.setText(String.format("Invalid interval. In the image %s pixels", imagePixels.length));
-            return true;
-        }
-        if ((getIntervalEnd() - getIntervalStart()) / getInterval() < 10) {
-            statusBar.setText("Check interval too large");
-            return true;
-        }
-        return false;
-    }
-
     @FXML
     private void doLastBitImage() {
         if (imagePixels == null) {
-            statusBar.setText(NO_IMAGE_WARNING);
+            setStatus(NO_IMAGE_WARNING);
             return;
         }
-        newImage = Steganography.doLastBitImage(imagePixels, imageWidth, imageHeight);
-        setNewImageForShow();
-        newImagePane.widthProperty().addListener(
-                (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
-        newImagePane.heightProperty().addListener(
-                (observableValue, oldSceneWidth, newSceneWidth) -> setNewImageForShow());
+        newImage = LastBitService.getLastBitImage(imagePixels, originalImage.getWidth(), originalImage.getHeight());
+        setupImage(newImage, newImageForShow, newImagePane);
     }
 
     @FXML
     private void exit() {
         Platform.exit();
         System.exit(0);
+    }
+
+    private void setupImage(BufferedImage image, ImageView imageToShow, AnchorPane imagePane) {
+        setImageToShow(image, imageToShow, (int) imagePane.getWidth(), (int) imagePane.getHeight());
+        imagePane.widthProperty().addListener((observableValue, oldSceneWidth, newSceneWidth) -> setImageToShow(
+                image, imageToShow, (int) imagePane.getWidth(), (int) imagePane.getHeight()));
+        imagePane.heightProperty().addListener((observableValue, oldSceneWidth, newSceneWidth) -> setImageToShow(
+                image, imageToShow, (int) imagePane.getWidth(), (int) imagePane.getHeight()));
+    }
+
+    private void setImageToShow(BufferedImage imageFromFile, ImageView newImageForShow, int width, int height) {
+        BufferedImage scaledImage = ImageService.scale(imageFromFile, width, height);
+        Image image = SwingFXUtils.toFXImage(scaledImage, null);
+        newImageForShow.setImage(image);
+    }
+
+    private int getStartPixel() {
+        return parseInt(startWritePixel.getText(), 0);
+    }
+
+    private int getIntervalStart() {
+        return parseInt(intervalStart.getText(), 0);
+    }
+
+    private int getIntervalEnd() {
+        return parseInt(intervalEnd.getText(), imagePixels.length);
+    }
+
+    private int getInterval() {
+        return parseInt(interval.getText(), imagePixels.length / 100);
+    }
+
+    private boolean notValidChartParams() {
+        if (imagePixels == null) {
+            setStatus(NO_IMAGE_WARNING);
+            return true;
+        }
+        if (getIntervalStart() > getIntervalEnd()) {
+            setStatus("Wrong interval");
+            return true;
+        }
+        if (getIntervalEnd() > imagePixels.length) {
+            setStatus(String.format("Invalid interval. In the image %s pixels", imagePixels.length));
+            return true;
+        }
+        if ((getIntervalEnd() - getIntervalStart()) / getInterval() < 10) {
+            setStatus("Check interval too large");
+            return true;
+        }
+        return false;
+    }
+
+    private void setStatus(String message) {
+        statusBar.setText(message);
     }
 }

@@ -3,7 +3,7 @@ package random.inspector;
 import org.knowm.xchart.QuickChart;
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
-import random.stego.Steganography;
+import random.stego.StegoService;
 
 import javax.swing.*;
 
@@ -88,7 +88,7 @@ public class EntropyInspector {
     private static int[] getLeastSignificantPixelArray(int[] pixels) {
         int[] extMsg = new int[pixels.length];
         for (int i = 0; i < pixels.length; i++) {
-            extMsg[i] = Steganography.extractMsgByteFromPixel(pixels[i]);
+            extMsg[i] = StegoService.extractMsgByteFromPixel(pixels[i]);
         }
         return extMsg;
     }

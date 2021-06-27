@@ -1,17 +1,17 @@
 plugins {
     id "java"
     id "application"
-    id "org.openjfx.javafxplugin" version "0.0.9"
-    id "org.beryx.jlink" version "2.23.6"
+    id "org.openjfx.javafxplugin" version "0.0.10"
+    id "org.beryx.jlink" version "2.24.0"
 }
 javafx {
-    version = "11.0.1"
+    version = "17-ea+13"
     modules = ["javafx.controls", "javafx.fxml", "javafx.swing"]
 }
 
 mainClassName = "random.Main"
 repositories {
-    jcenter()
+    mavenCentral()
 }
 dependencies {
     implementation "org.knowm.xchart:xchart:3.8.0"

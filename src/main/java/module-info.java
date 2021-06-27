@@ -6,5 +6,6 @@ module random {
     requires java.logging;
     requires org.knowm.xchart;
     exports random;
+    exports random.utils;
     opens random.gui;
 }
