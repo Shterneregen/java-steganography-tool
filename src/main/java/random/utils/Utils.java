@@ -4,13 +4,8 @@ import javafx.scene.control.TextField;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Utils {
-
-    private static final Logger LOG = Logger.getLogger(MethodHandles.lookup().lookupClass().getName());
 
     private Utils() {
     }
@@ -23,19 +18,22 @@ public class Utils {
         });
     }
 
-    public static byte[] concatenateByteArrays(byte[]... bytes) {
+    public static byte[] concatenateByteArrays(byte[]... bytes) throws IOException {
         if (bytes == null || bytes.length == 0) {
-            return new byte[0];
+            throw new IllegalArgumentException("Wrong arguments for byte concatenation (null or empty)");
+        }
+        if (bytes.length == 1) {
+            return bytes[0];
         }
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             for (byte[] b : bytes) {
+                if (b == null) {
+                    continue;
+                }
                 outputStream.write(b);
             }
             return outputStream.toByteArray();
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, e.getMessage());
         }
-        return new byte[0];
     }
 
     public static int parseInt(String textToParse, int defaultValue) {

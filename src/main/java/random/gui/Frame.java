@@ -141,6 +141,7 @@ public class Frame {
                 ImageIO.write(originalImage, "bmp", file);
                 setStatus("Image was converted");
             } catch (IOException e) {
+                LOG.log(Level.SEVERE, e.getMessage());
                 setStatus("Cannot convert the image to BMP");
             }
         }

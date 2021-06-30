@@ -4,12 +4,16 @@ import random.ValidateException;
 import random.utils.Utils;
 
 import java.awt.image.BufferedImage;
+import java.lang.invoke.MethodHandles;
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class StegoService {
 
+    private static final Logger LOG = Logger.getLogger(MethodHandles.lookup().lookupClass().getName());
     private static final int BYTES_IN_INT = 4;
 
     private StegoService() {
@@ -44,8 +48,15 @@ public class StegoService {
             throw new ValidateException("Not enough space to write");
         }
 
-        byte[] lengthBytes = ByteBuffer.allocate(4).putInt(messageBytesLength).array();
-        byte[] resultBytes = Utils.concatenateByteArrays(lengthBytes, messageBytes);
+        byte[] lengthBytes = ByteBuffer.allocate(BYTES_IN_INT).putInt(messageBytesLength).array();
+        byte[] resultBytes;
+        try {
+            resultBytes = Utils.concatenateByteArrays(lengthBytes, messageBytes);
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, e.getMessage());
+            throw new ValidateException("Cannot write text to image");
+        }
+
         for (int i = 0; i < resultBytes.length; startPixelPosition++, i++) {
             pixels[startPixelPosition] = insertMessageByteToPixel(resultBytes[i], pixels[startPixelPosition]);
         }
