@@ -1,20 +1,30 @@
 plugins {
     id "java"
     id "application"
-    id "org.openjfx.javafxplugin" version "0.0.10"
-    id "org.beryx.jlink" version "2.24.0"
-}
-javafx {
-    version = "17-ea+13"
-    modules = ["javafx.controls", "javafx.fxml", "javafx.swing"]
+    id "org.openjfx.javafxplugin" version "$javafxpluginVersion"
+    id "org.beryx.jlink" version "$jlinkVersion"
 }
 
-mainClassName = "random.Main"
 repositories {
     mavenCentral()
 }
+
+compileJava {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+javafx {
+    version = "$javafxVersion"
+    modules = ["javafx.controls", "javafx.fxml", "javafx.swing"]
+}
+
+application {
+    getMainClass().set("random.Main")
+}
+
 dependencies {
-    implementation "org.knowm.xchart:xchart:3.8.0"
+    implementation "org.knowm.xchart:xchart:$xchartVersion"
 }
 
 // To create fat jar - uncomment this block
