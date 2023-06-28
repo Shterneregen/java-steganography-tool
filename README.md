@@ -7,14 +7,12 @@ Run
 gradlew clean run
 ```
 
-Create native image
+Create executable file
 ```shell
-gradlew clean jlink
+gradlew clean jpackage
 ```
-Image location
-```shell
-./build/image/bin
-```
+- Installers: `.\build\jpackage`
+- Executable: `.\build\jpackage\stego\stego.exe`
 
 ---
 Java 11 is required.

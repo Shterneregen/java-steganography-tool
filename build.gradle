@@ -27,16 +27,26 @@ dependencies {
     implementation "org.knowm.xchart:xchart:$xchartVersion"
 }
 
-// To create fat jar - uncomment this block
-//jar {
-//    archiveFileName = "stego.jar"
-//    manifest {
-//        attributes(
-//                "Class-Path": configurations.compileClasspath.files.collect { "$it.name" }.join(" "),
-//                "Main-Class": "random.Main"
-//        )
-//    }
-//    from {
-//        configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-//    }
-//}
+jlink {
+    launcher {
+        name = "stego"
+    }
+
+    // Install Wix Toolset before using jpackage. And add it to the PATH variable
+    // https://wixtoolset.org/docs/wix3/
+    jpackage {
+        def currentOs = org.gradle.internal.os.OperatingSystem.current()
+        if (currentOs.windows) {
+            installerOptions += ["--win-per-user-install", "--win-dir-chooser", "--win-menu"]
+        }
+    }
+}
+
+tasks.register("fatJar", Jar) {
+    group "build"
+    manifest { attributes "Main-Class": "random.Main" }
+    archiveFileName = "stego.jar"
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
